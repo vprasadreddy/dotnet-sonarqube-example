@@ -1,0 +1,59 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: UseDotNet@2
+    displayName: "Use dotnet 5.x"
+    inputs:
+      packageType: "sdk"
+      version: "5.x"
+      includePreviewVersions: true
+      performMultiLevelLookup: true
+
+  - task: DotNetCoreCLI@2
+    displayName: "dotnet restore"
+    inputs:
+      command: "restore"
+      projects: "**/*.csproj"
+      feedsToUse: "select"
+
+  # to fail the pipeline when the quality gate fails, use below two properties in Prepare Analysis Configuration(SonarQubePrepare) task
+  # sonar.qualitygate.wait=true
+  # sonar.qualitygate.timeout=300
+  - task: SonarQubePrepare@5
+    inputs:
+      SonarQube: "Sonarqube_SPN"
+      scannerMode: "CLI"
+      configMode: "manual"
+      cliProjectKey: "Azure_Open_AI_dotnet-sonarqube-example_AYxnnyFn_HevM_rXEWah"
+      cliProjectName: "dotnet-sonarqube-example"
+      cliSources: "."
+      extraProperties: |
+        # Additional properties that will be passed to the scanner, 
+        # Put one key=value per line, example:
+        # sonar.exclusions=**/*.bin
+        sonar.qualitygate.wait=true
+        sonar.qualitygate.timeout=300
+
+  - task: SonarQubeAnalyze@5
+    displayName: "SonarQube Analyze"
+    inputs:
+      jdkversion: "JAVA_HOME_11_X64"
+
+  - task: SonarQubePublish@5
+    displayName: "Sonar report publish"
+    inputs:
+      pollingTimeoutSec: "300"
+
+  - task: DotNetCoreCLI@2
+    displayName: "dotnet publish"
+    inputs:
+      command: "publish"
+      publishWebProjects: true
